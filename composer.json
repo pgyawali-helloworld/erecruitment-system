@@ -1,0 +1,18 @@
+{
+
+    "autoload": {
+    "psr-4": {
+        "App\\": "app/"
+    }
+},
+    "authors": [
+        {
+            "name": "magarishor",
+            "email": "ss.dev.n020@gmail.com"
+        }
+    ],
+    "require": {
+        "smalot/pdfparser": "^2.12",
+        "phpoffice/phpword": "^1.3"
+    }
+}
