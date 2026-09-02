@@ -24,10 +24,31 @@
                             <i class="fa-solid fa-building me-1"></i> <?php echo htmlspecialchars($job->company_name); ?>
                         </p>
                         <div class="d-flex flex-wrap gap-3 text-muted small">
-                            <span><i class="fa-solid fa-location-dot text-danger me-1"></i> <?php echo htmlspecialchars($job->location); ?></span>
-                            <span><i class="fa-solid fa-clock text-info me-1"></i> <?php echo htmlspecialchars($job->job_type); ?></span>
-                            <span><i class="fa-solid fa-money-bill-wave text-success me-1"></i> <?php echo htmlspecialchars($job->salary ?: 'Negotiable'); ?></span>
-                        </div>
+    <span>
+        <i class="fa-solid fa-location-dot text-danger me-1"></i>
+        <?php echo htmlspecialchars($job->location); ?>
+    </span>
+
+    <span>
+        <i class="fa-solid fa-clock text-info me-1"></i>
+        <?php echo htmlspecialchars($job->job_type); ?>
+    </span>
+
+    <span>
+        <i class="fa-solid fa-money-bill-wave text-success me-1"></i>
+        <?php echo htmlspecialchars($job->salary ?: 'Negotiable'); ?>
+    </span>
+   
+
+    <?php if (isset($job->required_experience) && $job->required_experience !== '' && $job->required_experience !== null): ?>
+        <span>
+            <i class="fa-solid fa-briefcase text-primary me-1"></i>
+            <strong>Experience:</strong>
+            <?php echo htmlspecialchars($job->required_experience); ?>
+        </span>
+    <?php endif; ?>
+    
+</div>
                     </div>
 
                     <div>

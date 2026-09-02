@@ -65,11 +65,11 @@
                         <?php 
                             $acceptedCount = 0;
                             foreach ($applications as $app) {
-                                if ($app->status === 'accepted') $acceptedCount++;
+                                if ($app->status === 'shortlisted') $acceptedCount++;
                             }
                         ?>
                         <h3 class="fw-extrabold"><?php echo $acceptedCount; ?></h3>
-                        <p class="text-success small mb-0"><?php echo $acceptedCount; ?> Accepted applications</p>
+                        <p class="text-success small mb-0"><?php echo $acceptedCount; ?> Shortlisted applications</p>
                     </div>
                 </div>
             </div>
@@ -112,7 +112,7 @@
                                                 $badgeClass = 'bg-secondary-subtle text-secondary';
                                                 if ($app->status === 'pending') $badgeClass = 'bg-warning-subtle text-warning';
                                                 elseif ($app->status === 'under_review') $badgeClass = 'bg-info-subtle text-info';
-                                                elseif ($app->status === 'accepted') $badgeClass = 'bg-success-subtle text-success';
+                                                elseif ($app->status === 'shortlisted') $badgeClass = 'bg-success-subtle text-success';
                                                 elseif ($app->status === 'rejected') $badgeClass = 'bg-danger-subtle text-danger';
                                             ?>
                                             <span class="badge <?php echo $badgeClass; ?> px-2.5 py-1.5 fw-bold">

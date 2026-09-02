@@ -113,6 +113,13 @@
                             <p class="text-muted small mb-3 line-clamp-2">
                                 <?php echo htmlspecialchars(substr($job->description, 0, 120)) . '...'; ?>
                             </p>
+                            <?php if (isset($job->required_experience) && $job->required_experience !== '' && $job->required_experience !== null): ?>
+    <p class="text-muted small mb-2">
+        <i class="fa-solid fa-briefcase me-1 text-primary"></i>
+        <strong>Experience:</strong>
+        <?php echo htmlspecialchars($job->required_experience); ?>
+    </p>
+<?php endif; ?>
                         </div>
 
                         <div class="pt-3 border-top mt-3">

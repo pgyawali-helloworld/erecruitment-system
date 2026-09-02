@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS `applications` (
     `candidate_id` INT NOT NULL,
     `resume_path` VARCHAR(255) NOT NULL, -- Keep path of resume sent at the time of application
     `cover_letter` TEXT,
-    `status` ENUM('pending', 'under_review', 'accepted', 'rejected') DEFAULT 'pending',
+    `status` ENUM('pending', 'under_review', 'shortlisted', 'rejected') DEFAULT 'pending',
     `applied_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`job_id`) REFERENCES `jobs`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`candidate_id`) REFERENCES `candidates`(`id`) ON DELETE CASCADE
