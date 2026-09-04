@@ -128,6 +128,14 @@
                                 <span><i class="fa-solid fa-money-bill-wave me-1 text-success"></i> <?php echo htmlspecialchars($job->salary ?: 'Negotiable'); ?></span>
                             </div>
 
+                            <?php if (!empty($job->expiry_date)): ?>
+                                <div class="text-muted small mb-3">
+                                    <i class="fa-solid fa-calendar-xmark me-1 text-danger"></i>
+                                    <strong>Apply Before:</strong>
+                                    <?php echo htmlspecialchars(date('M d, Y', strtotime($job->expiry_date))); ?>
+                                </div>
+                            <?php endif; ?>
+
                             <a href="<?php echo URL_ROOT; ?>/jobs/view/<?php echo $job->id; ?>" class="btn btn-outline-primary w-100 py-2 rounded-3 fw-bold">
                                 View Job Details <i class="fa-solid fa-arrow-right ms-1"></i>
                             </a>

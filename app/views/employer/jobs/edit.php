@@ -1,693 +1,417 @@
-<?php
-
-namespace App\Controllers;
-
-use App\Core\Controller;
-use App\Core\Session;
-
-/**
- * EmployerController Class
- * Handles operations and dashboards restricted to Employer role.
- */
-class EmployerController extends Controller
-{
-    private $userModel;
-    private $jobModel;
-    private $categoryModel;
-    private $applicationModel;
-
-    public function __construct()
-    {
-        Session::authorize('employer');
-
-        $this->userModel = $this->model('User');
-        $this->jobModel = $this->model('Job');
-        $this->categoryModel = $this->model('Category');
-        $this->applicationModel = $this->model('Application');
-    }
-
-    /**
-     * Get Employer Company Details
-     */
-    private function getEmployerCompany()
-    {
-        $employer = $this->userModel->getUserDetails(
-            Session::get('user_id'),
-            'employer'
-        );
-
-        if (!$employer || empty($employer->company_id)) {
-            Session::setFlash(
-                'error',
-                'Company profile is incomplete. Please contact support.'
-            );
-
-            return null;
-        }
-
-        return $employer;
-    }
-
-    /**
-     * Show Employer Dashboard
-     */
-    public function dashboard()
-    {
-        $employer = $this->getEmployerCompany();
-
-        $jobs = [];
-        $applications = [];
-
-        if ($employer) {
-            $jobs = $this->jobModel->getJobsByCompanyId(
-                $employer->company_id
-            );
-
-            $applications = $this->applicationModel->getEmployerApplications(
-                $employer->company_id
-            );
-        }
-
-        $data = [
-            'title' => 'Employer Workspace',
-            'employer' => $employer,
-            'jobs' => $jobs,
-            'applications' => $applications,
-            'activeTab' => 'dashboard'
-        ];
-
-        $this->view('employer/dashboard', $data);
-    }
-
-    /**
-     * List all Job Postings for Employer
-     */
-    public function jobs()
-    {
-        $employer = $this->getEmployerCompany();
-
-        $jobs = [];
-
-        if ($employer) {
-            $jobs = $this->jobModel->getJobsByCompanyId(
-                $employer->company_id
-            );
-        }
-
-        $data = [
-            'title' => 'My Job Vacancies',
-            'jobs' => $jobs,
-            'activeTab' => 'jobs'
-        ];
-
-        $this->view('employer/jobs/index', $data);
-    }
-
-    /**
-     * Show Create Job Form
-     */
-    public function showCreateJob()
-    {
-        $categories = $this->categoryModel->getAllCategories();
-
-        $data = [
-            'title' => 'Post a New Job Vacancy',
-            'categories' => $categories,
-            'activeTab' => 'jobs',
-            'errors' => [],
-            'old' => []
-        ];
-
-        $this->view('employer/jobs/create', $data);
-    }
-
-    /**
-     * Action to Save New Job
-     */
-    public function createJob()
-    {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect('employer/jobs/create');
-            return;
-        }
-
-        $employer = $this->getEmployerCompany();
-
-        if (!$employer) {
-            Session::setFlash('error', 'Company profile not found.');
-            $this->redirect('employer/dashboard');
-            return;
-        }
-
-        /*
-         * Get POST data safely
-         */
-        $title = trim($_POST['title'] ?? '');
-        $category_id = trim($_POST['category_id'] ?? '');
-        $job_type = trim($_POST['job_type'] ?? '');
-        $location = trim($_POST['location'] ?? '');
-        $salary = trim($_POST['salary'] ?? '');
-        $expiry_date = trim($_POST['expiry_date'] ?? '');
-        $required_experience = trim($_POST['required_experience'] ?? '');
-        $description = trim($_POST['description'] ?? '');
-        $requirements = trim($_POST['requirements'] ?? '');
-
-        $errors = [];
-
-        /*
-         * Job Title Validation
-         */
-        if (empty($title)) {
-            $errors['title'] = 'Job title is required.';
-        } elseif (strlen($title) < 5) {
-            $errors['title'] = 'Job title must be at least 5 characters.';
-        } elseif (strlen($title) > 100) {
-            $errors['title'] = 'Job title cannot exceed 100 characters.';
-        }
-
-        /*
-         * Category Validation
-         */
-        if (empty($category_id)) {
-            $errors['category_id'] = 'Please select a job category.';
-        }
-
-        /*
-         * Employment Type Validation
-         */
-        if (empty($job_type)) {
-            $errors['job_type'] = 'Please select employment type.';
-        }
-
-        /*
-         * Location Validation
-         */
-        if (empty($location)) {
-            $errors['location'] = 'Job location is required.';
-        }
-
-        /*
-         * Salary Validation
-         */
-        if ($salary === '') {
-            $errors['salary'] = 'Salary is required.';
-        } elseif (!is_numeric($salary)) {
-            $errors['salary'] = 'Salary must be a valid number.';
-        } elseif ((float) $salary < 0) {
-            $errors['salary'] = 'Salary cannot be negative.';
-        }
-
-        /*
-         * Expiry Date Validation
-         */
-        if (empty($expiry_date)) {
-            $errors['expiry_date'] = 'Application expiry date is required.';
-        } elseif (
-            strtotime($expiry_date) === false ||
-            strtotime($expiry_date) < strtotime(date('Y-m-d'))
-        ) {
-            $errors['expiry_date'] = 'Expiry date cannot be in the past.';
-        }
-
-        /*
-         * Required Experience Validation
-         */
-        if ($required_experience === '') {
-            $errors['required_experience'] =
-                'Required experience is required.';
-        } elseif (!is_numeric($required_experience)) {
-            $errors['required_experience'] =
-                'Required experience must be a valid number.';
-        } elseif ((float) $required_experience < 0) {
-            $errors['required_experience'] =
-                'Required experience cannot be negative.';
-        } elseif ((float) $required_experience > 50) {
-            $errors['required_experience'] =
-                'Required experience cannot exceed 50 years.';
-        }
-
-        /*
-         * Description Validation
-         */
-        if (empty($description)) {
-            $errors['description'] = 'Job description is required.';
-        } elseif (strlen($description) < 20) {
-            $errors['description'] =
-                'Job description must be at least 20 characters.';
-        }
-
-        /*
-         * Save Job
-         */
-        if (empty($errors)) {
-
-            $jobData = [
-                'company_id' => $employer->company_id,
-                'category_id' => $category_id,
-                'title' => $title,
-                'job_type' => $job_type,
-                'location' => $location,
-                'salary' => $salary,
-                'expiry_date' => $expiry_date,
-                'required_experience' => (float) $required_experience,
-                'description' => $description,
-                'requirements' => $requirements,
-                'status' => 'active'
-            ];
-
-            if ($this->jobModel->createJob($jobData)) {
-
-                Session::setFlash(
-                    'success',
-                    'Job vacancy posted successfully!',
-                    'alert-success'
-                );
-
-                $this->redirect('employer/jobs');
-                return;
-
-            } else {
-
-                Session::setFlash(
-                    'error',
-                    'Something went wrong. Failed to create job.'
-                );
-            }
-        }
-
-        /*
-         * Reload categories and show form with errors
-         */
-        $categories = $this->categoryModel->getAllCategories();
-
-        $data = [
-            'title' => 'Post a New Job Vacancy',
-            'categories' => $categories,
-            'errors' => $errors,
-            'old' => $_POST,
-            'activeTab' => 'jobs'
-        ];
-
-        $this->view('employer/jobs/create', $data);
-    }
-
-    /**
-     * Show Edit Job Form
-     */
-    public function showEditJob($id)
-    {
-        $employer = $this->getEmployerCompany();
-
-        if (!$employer) {
-            $this->redirect('employer/dashboard');
-            return;
-        }
-
-        $job = $this->jobModel->getJobById($id);
-
-        /*
-         * Verify job belongs to logged-in employer's company
-         */
-        if (!$job || $job->company_id != $employer->company_id) {
-
-            Session::setFlash(
-                'error',
-                'Job vacancy not found or access unauthorized.'
-            );
-
-            $this->redirect('employer/jobs');
-            return;
-        }
-
-        $categories = $this->categoryModel->getAllCategories();
-
-        $data = [
-            'title' => 'Edit Job Vacancy - ' . $job->title,
-            'job' => $job,
-            'categories' => $categories,
-            'errors' => [],
-            'activeTab' => 'jobs'
-        ];
-
-        $this->view('employer/jobs/edit', $data);
-    }
-
-    /**
-     * Action to Update Job
-     */
-    public function editJob($id)
-    {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect('employer/jobs/edit/' . $id);
-            return;
-        }
-
-        $employer = $this->getEmployerCompany();
-
-        if (!$employer) {
-            $this->redirect('employer/dashboard');
-            return;
-        }
-
-        $job = $this->jobModel->getJobById($id);
-
-        /*
-         * Security Check:
-         * Employer can only edit their own company's jobs.
-         */
-        if (!$job || $job->company_id != $employer->company_id) {
-
-            Session::setFlash(
-                'error',
-                'Job vacancy not found or access unauthorized.'
-            );
-
-            $this->redirect('employer/jobs');
-            return;
-        }
-
-        /*
-         * Get POST data safely
-         */
-        $title = trim($_POST['title'] ?? '');
-        $category_id = trim($_POST['category_id'] ?? '');
-        $job_type = trim($_POST['job_type'] ?? '');
-        $location = trim($_POST['location'] ?? '');
-        $salary = trim($_POST['salary'] ?? '');
-        $status = trim($_POST['status'] ?? '');
-        $expiry_date = trim($_POST['expiry_date'] ?? '');
-        $required_experience = trim($_POST['required_experience'] ?? '');
-        $description = trim($_POST['description'] ?? '');
-        $requirements = trim($_POST['requirements'] ?? '');
-
-        $errors = [];
-
-        /*
-         * Job Title Validation
-         */
-        if (empty($title)) {
-            $errors['title'] = 'Job title is required.';
-        } elseif (strlen($title) < 5) {
-            $errors['title'] = 'Job title must be at least 5 characters.';
-        } elseif (strlen($title) > 100) {
-            $errors['title'] = 'Job title cannot exceed 100 characters.';
-        }
-
-        /*
-         * Category Validation
-         */
-        if (empty($category_id)) {
-            $errors['category_id'] = 'Please select a job category.';
-        }
-
-        /*
-         * Employment Type Validation
-         */
-        if (empty($job_type)) {
-            $errors['job_type'] = 'Please select employment type.';
-        }
-
-        /*
-         * Location Validation
-         */
-        if (empty($location)) {
-            $errors['location'] = 'Job location is required.';
-        }
-
-        /*
-         * Salary Validation
-         */
-        if ($salary === '') {
-
-            $errors['salary'] = 'Salary is required.';
-
-        } elseif (!is_numeric($salary)) {
-
-            $errors['salary'] = 'Salary must be a valid number.';
-
-        } elseif ((float) $salary < 0) {
-
-            $errors['salary'] = 'Salary cannot be negative.';
-        }
-
-        /*
-         * Status Validation
-         */
-        $validStatuses = [
-            'active',
-            'inactive',
-            'closed'
-        ];
-
-        if (!in_array($status, $validStatuses, true)) {
-            $errors['status'] = 'Invalid job status selected.';
-        }
-
-        /*
-         * Required Experience Validation
-         */
-        if ($required_experience === '') {
-
-            $errors['required_experience'] =
-                'Required experience is required.';
-
-        } elseif (!is_numeric($required_experience)) {
-
-            $errors['required_experience'] =
-                'Required experience must be a valid number.';
-
-        } elseif ((float) $required_experience < 0) {
-
-            $errors['required_experience'] =
-                'Required experience cannot be negative.';
-
-        } elseif ((float) $required_experience > 50) {
-
-            $errors['required_experience'] =
-                'Required experience cannot exceed 50 years.';
-        }
-
-        /*
-         * Expiry Date Validation
-         */
-        if (empty($expiry_date)) {
-
-            $errors['expiry_date'] =
-                'Application expiry date is required.';
-
-        } elseif (
-            strtotime($expiry_date) === false ||
-            strtotime($expiry_date) < strtotime(date('Y-m-d'))
-        ) {
-
-            $errors['expiry_date'] =
-                'Expiry date cannot be in the past.';
-        }
-
-        /*
-         * Description Validation
-         */
-        if (empty($description)) {
-
-            $errors['description'] =
-                'Job description is required.';
-
-        } elseif (strlen($description) < 20) {
-
-            $errors['description'] =
-                'Job description must be at least 20 characters.';
-        }
-
-        /*
-         * Update Job
-         */
-        if (empty($errors)) {
-
-            $jobData = [
-                'category_id' => $category_id,
-                'title' => $title,
-                'job_type' => $job_type,
-                'location' => $location,
-                'salary' => $salary,
-                'status' => $status,
-                'expiry_date' => $expiry_date,
-                'required_experience' => (float) $required_experience,
-                'description' => $description,
-                'requirements' => $requirements
-            ];
-
-            if ($this->jobModel->updateJob($id, $jobData)) {
-
-                Session::setFlash(
-                    'success',
-                    'Job vacancy updated successfully!',
-                    'alert-success'
-                );
-
-                $this->redirect('employer/jobs');
-                return;
-
-            } else {
-
-                Session::setFlash(
-                    'error',
-                    'Failed to update job vacancy.'
-                );
-            }
-        }
-
-        /*
-         * Reload form with validation errors
-         */
-        $categories = $this->categoryModel->getAllCategories();
-
-        /*
-         * Merge database job data with submitted POST data
-         * so the user does not lose entered values.
-         */
-        $updatedJob = (object) array_merge(
-            (array) $job,
-            $_POST
-        );
-
-        $data = [
-            'title' => 'Edit Job Vacancy',
-            'job' => $updatedJob,
-            'categories' => $categories,
-            'errors' => $errors,
-            'activeTab' => 'jobs'
-        ];
-
-        $this->view('employer/jobs/edit', $data);
-    }
-
-    /**
-     * Delete Employer Job
-     */
-    public function deleteJob($id)
-    {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect('employer/jobs');
-            return;
-        }
-
-        $employer = $this->getEmployerCompany();
-
-        if (!$employer) {
-            $this->redirect('employer/dashboard');
-            return;
-        }
-
-        $job = $this->jobModel->getJobById($id);
-
-        /*
-         * Security Check:
-         * Employer can only delete their own company's jobs.
-         */
-        if ($job && $job->company_id == $employer->company_id) {
-
-            if ($this->jobModel->deleteJob($id)) {
-
-                Session::setFlash(
-                    'success',
-                    'Job vacancy deleted successfully.',
-                    'alert-success'
-                );
-
-            } else {
-
-                Session::setFlash(
-                    'error',
-                    'Failed to delete job vacancy.'
-                );
-            }
-
-        } else {
-
-            Session::setFlash(
-                'error',
-                'Unauthorized operation or job not found.'
-            );
-        }
-
-        $this->redirect('employer/jobs');
-    }
-
-    /**
-     * Employer Candidate Applications Review
-     */
-    public function applications()
-    {
-        $employer = $this->getEmployerCompany();
-
-        $applications = [];
-
-        if ($employer) {
-            $applications =
-                $this->applicationModel->getEmployerApplications(
-                    $employer->company_id
-                );
-        }
-
-        $data = [
-            'title' => 'Candidate Applications',
-            'applications' => $applications,
-            'activeTab' => 'applications'
-        ];
-
-        $this->view('employer/applications/index', $data);
-    }
-
-    /**
-     * Update Candidate Application Status
-     *
-     * Valid statuses:
-     * pending
-     * under_review
-     * accepted
-     * rejected
-     */
-    public function updateApplicationStatus($id)
-    {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
-            $status = trim($_POST['status'] ?? 'pending');
-
-            $validStatuses = [
-                'pending',
-                'under_review',
-                'shortlisted',
-                'rejected'
-            ];
-
-            if (in_array($status, $validStatuses, true)) {
-
-                if ($this->applicationModel->updateStatus($id, $status)) {
-
-                    Session::setFlash(
-                        'success',
-                        'Application status updated to ' .
-                        str_replace('_', ' ', $status) . '.',
-                        'alert-success'
-                    );
-
-                } else {
-
-                    Session::setFlash(
-                        'error',
-                        'Failed to update application status.'
-                    );
-                }
-            } else {
-
-                Session::setFlash(
-                    'error',
-                    'Invalid application status.'
-                );
-            }
-        }
-
-        $this->redirect('employer/applications');
-    }
-}
+<?php require APP_ROOT . '/views/layouts/header.php'; ?>
+
+<div class="container py-5">
+
+    <?php echo \App\Core\Session::flash('success'); ?>
+    <?php echo \App\Core\Session::flash('error'); ?>
+
+    <div class="row g-4">
+
+        <!-- Sidebar Navigation Card -->
+        <div class="col-lg-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-4">
+
+                <div class="text-center py-3 border-bottom mb-3">
+                    <div class="bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3"
+                         style="width: 70px; height: 70px;">
+                        <i class="fa-solid fa-building fs-2"></i>
+                    </div>
+
+                    <h5 class="fw-bold mb-0">
+                        <?php echo htmlspecialchars(\App\Core\Session::get('user_name')); ?>
+                    </h5>
+
+                    <span class="badge bg-primary mt-2 px-3 py-2 rounded-pill small">
+                        Employer Account
+                    </span>
+                </div>
+
+                <div class="nav flex-column nav-pills gap-1">
+
+                    <a class="nav-link text-secondary py-2.5 rounded-3 fw-semibold"
+                       href="<?php echo URL_ROOT; ?>/employer/dashboard">
+                        <i class="fa-solid fa-gauge me-2"></i>
+                        Dashboard
+                    </a>
+
+                    <a class="nav-link active py-2.5 rounded-3 fw-semibold"
+                       href="<?php echo URL_ROOT; ?>/employer/jobs">
+                        <i class="fa-solid fa-briefcase me-2"></i>
+                        My Job Openings
+                    </a>
+
+                    <a class="nav-link text-secondary py-2.5 rounded-3 fw-semibold"
+                       href="<?php echo URL_ROOT; ?>/employer/jobs/create">
+                        <i class="fa-solid fa-plus-circle me-2"></i>
+                        Post New Job
+                    </a>
+
+                    <a class="nav-link text-secondary py-2.5 rounded-3 fw-semibold"
+                       href="<?php echo URL_ROOT; ?>/employer/applications">
+                        <i class="fa-solid fa-users me-2"></i>
+                        Candidate Applications
+                    </a>
 
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="col-lg-9">
+
+            <!-- Page Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+
+                <div>
+                    <h2 class="fw-extrabold mb-1">
+                        Edit Job Vacancy
+                    </h2>
+
+                    <p class="text-muted small mb-0">
+                        Update the details of your job posting
+                    </p>
+                </div>
+
+                <a href="<?php echo URL_ROOT; ?>/employer/jobs"
+                   class="btn btn-outline-secondary px-4 py-2.5 rounded-3 fw-semibold">
+                    <i class="fa-solid fa-arrow-left me-1"></i>
+                    Back to Jobs
+                </a>
+
+            </div>
+
+            <!-- Edit Job Form Card -->
+            <div class="card border-0 shadow-sm rounded-4 bg-white p-4 p-md-5">
+
+                <form action="<?php echo URL_ROOT; ?>/employer/jobs/edit/<?php echo $job->id; ?>"
+                      method="POST"
+                      novalidate>
+
+                    <div class="row g-3">
+
+                        <!-- Job Title -->
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">
+                                Job Title <span class="text-danger">*</span>
+                            </label>
+
+                            <input
+                                type="text"
+                                name="title"
+                                minlength="5"
+                                maxlength="100"
+                                required
+                                class="form-control py-2.5 rounded-3 <?php echo !empty($errors['title']) ? 'is-invalid' : ''; ?>"
+                                placeholder="e.g. Senior PHP Web Developer"
+                                value="<?php echo htmlspecialchars($job->title ?? ''); ?>">
+
+                            <?php if (!empty($errors['title'])): ?>
+                                <div class="invalid-feedback">
+                                    <?php echo htmlspecialchars($errors['title']); ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+
+
+                        <!-- Job Category -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">
+                                Job Category <span class="text-danger">*</span>
+                            </label>
+
+                            <select
+                                name="category_id"
+                                required
+                                class="form-select py-2.5 rounded-3 <?php echo !empty($errors['category_id']) ? 'is-invalid' : ''; ?>">
+
+                                <option value="">
+                                    Select Category
+                                </option>
+
+                                <?php foreach ($categories as $cat): ?>
+
+                                    <option
+                                        value="<?php echo htmlspecialchars($cat->id); ?>"
+                                        <?php echo ((string)($job->category_id ?? '') === (string)$cat->id) ? 'selected' : ''; ?>>
+
+                                        <?php echo htmlspecialchars($cat->name); ?>
+
+                                    </option>
+
+                                <?php endforeach; ?>
+
+                            </select>
+
+                            <?php if (!empty($errors['category_id'])): ?>
+                                <div class="invalid-feedback">
+                                    <?php echo htmlspecialchars($errors['category_id']); ?>
+                                </div>
+                            <?php endif; ?>
+
+                        </div>
+
+
+                        <!-- Employment Type -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">
+                                Employment Type <span class="text-danger">*</span>
+                            </label>
+
+                            <select
+                                name="job_type"
+                                required
+                                class="form-select py-2.5 rounded-3 <?php echo !empty($errors['job_type']) ? 'is-invalid' : ''; ?>">
+
+                                <option value="">
+                                    Select Employment Type
+                                </option>
+
+                                <option value="Full-time"
+                                    <?php echo (($job->job_type ?? '') === 'Full-time') ? 'selected' : ''; ?>>
+                                    Full-time
+                                </option>
+
+                                <option value="Part-time"
+                                    <?php echo (($job->job_type ?? '') === 'Part-time') ? 'selected' : ''; ?>>
+                                    Part-time
+                                </option>
+
+                                <option value="Contract"
+                                    <?php echo (($job->job_type ?? '') === 'Contract') ? 'selected' : ''; ?>>
+                                    Contract
+                                </option>
+
+                                <option value="Remote"
+                                    <?php echo (($job->job_type ?? '') === 'Remote') ? 'selected' : ''; ?>>
+                                    Remote
+                                </option>
+
+                                <option value="Internship"
+                                    <?php echo (($job->job_type ?? '') === 'Internship') ? 'selected' : ''; ?>>
+                                    Internship
+                                </option>
+
+                            </select>
+
+                            <?php if (!empty($errors['job_type'])): ?>
+                                <div class="invalid-feedback">
+                                    <?php echo htmlspecialchars($errors['job_type']); ?>
+                                </div>
+                            <?php endif; ?>
+
+                        </div>
+
+
+                        <!-- Job Location -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">
+                                Job Location <span class="text-danger">*</span>
+                            </label>
+
+                            <input
+                                type="text"
+                                name="location"
+                                minlength="3"
+                                maxlength="100"
+                                required
+                                class="form-control py-2.5 rounded-3 <?php echo !empty($errors['location']) ? 'is-invalid' : ''; ?>"
+                                placeholder="e.g. Kathmandu, Nepal or Remote"
+                                value="<?php echo htmlspecialchars($job->location ?? ''); ?>">
+
+                            <?php if (!empty($errors['location'])): ?>
+                                <div class="invalid-feedback">
+                                    <?php echo htmlspecialchars($errors['location']); ?>
+                                </div>
+                            <?php endif; ?>
+
+                        </div>
+
+
+                        <!-- Salary -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">
+                                Salary (NPR) <span class="text-danger">*</span>
+                            </label>
+
+                            <input
+                                type="number"
+                                name="salary"
+                                min="0"
+                                step="0.01"
+                                required
+                                class="form-control py-2.5 rounded-3 <?php echo !empty($errors['salary']) ? 'is-invalid' : ''; ?>"
+                                placeholder="e.g. 80000"
+                                value="<?php echo htmlspecialchars($job->salary ?? ''); ?>">
+
+                            <?php if (!empty($errors['salary'])): ?>
+                                <div class="invalid-feedback">
+                                    <?php echo htmlspecialchars($errors['salary']); ?>
+                                </div>
+                            <?php endif; ?>
+
+                        </div>
+
+
+                        <!-- Application Expiry Date -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">
+                                Application Expiry Date <span class="text-danger">*</span>
+                            </label>
+
+                            <input
+                                type="date"
+                                name="expiry_date"
+                                min="<?php echo date('Y-m-d'); ?>"
+                                required
+                                class="form-control py-2.5 rounded-3 <?php echo !empty($errors['expiry_date']) ? 'is-invalid' : ''; ?>"
+                                value="<?php echo htmlspecialchars($job->expiry_date ?? ''); ?>">
+
+                            <?php if (!empty($errors['expiry_date'])): ?>
+                                <div class="invalid-feedback">
+                                    <?php echo htmlspecialchars($errors['expiry_date']); ?>
+                                </div>
+                            <?php endif; ?>
+
+                        </div>
+
+
+                        <!-- Required Experience -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">
+                                Required Experience <span class="text-danger">*</span>
+                            </label>
+
+                            <div class="input-group">
+
+                                <input
+                                    type="number"
+                                    name="required_experience"
+                                    id="required_experience"
+                                    min="0"
+                                    max="50"
+                                    step="0.5"
+                                    required
+                                    class="form-control py-2.5 rounded-start-3 <?php echo !empty($errors['required_experience']) ? 'is-invalid' : ''; ?>"
+                                    placeholder="e.g. 2"
+                                    value="<?php echo htmlspecialchars($job->required_experience ?? '0'); ?>">
+
+                                <span class="input-group-text">
+                                    Years
+                                </span>
+
+                            </div>
+
+                            <?php if (!empty($errors['required_experience'])): ?>
+                                <div class="invalid-feedback d-block">
+                                    <?php echo htmlspecialchars($errors['required_experience']); ?>
+                                </div>
+                            <?php endif; ?>
+
+                            <small class="text-muted">
+                                Enter 0 for freshers. You can use 0.5 for 6 months.
+                            </small>
+
+                        </div>
+
+
+                        <!-- Job Status -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">
+                                Job Status <span class="text-danger">*</span>
+                            </label>
+
+                            <select
+                                name="status"
+                                required
+                                class="form-select py-2.5 rounded-3 <?php echo !empty($errors['status']) ? 'is-invalid' : ''; ?>">
+
+                                <option value="active"
+                                    <?php echo (($job->status ?? '') === 'active') ? 'selected' : ''; ?>>
+                                    Active
+                                </option>
+
+                                <option value="inactive"
+                                    <?php echo (($job->status ?? '') === 'inactive') ? 'selected' : ''; ?>>
+                                    Inactive
+                                </option>
+
+                                <option value="closed"
+                                    <?php echo (($job->status ?? '') === 'closed') ? 'selected' : ''; ?>>
+                                    Closed
+                                </option>
+
+                            </select>
+
+                            <?php if (!empty($errors['status'])): ?>
+                                <div class="invalid-feedback">
+                                    <?php echo htmlspecialchars($errors['status']); ?>
+                                </div>
+                            <?php endif; ?>
+
+                        </div>
+
+
+                        <!-- Job Description -->
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">
+                                Job Overview & Responsibilities
+                                <span class="text-danger">*</span>
+                            </label>
+
+                            <textarea
+                                name="description"
+                                rows="5"
+                                minlength="20"
+                                required
+                                class="form-control rounded-3 <?php echo !empty($errors['description']) ? 'is-invalid' : ''; ?>"
+                                placeholder="Detailed description of the role..."><?php echo htmlspecialchars($job->description ?? ''); ?></textarea>
+
+                            <?php if (!empty($errors['description'])): ?>
+                                <div class="invalid-feedback">
+                                    <?php echo htmlspecialchars($errors['description']); ?>
+                                </div>
+                            <?php endif; ?>
+
+                        </div>
+
+
+                        <!-- Candidate Requirements -->
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">
+                                Candidate Requirements & Qualifications
+                            </label>
+
+                            <textarea
+                                name="requirements"
+                                rows="4"
+                                minlength="10"
+                                class="form-control rounded-3"
+                                placeholder="Skills, qualifications, and experience required..."><?php echo htmlspecialchars($job->requirements ?? ''); ?></textarea>
+
+                        </div>
+
+
+                        <!-- Submit Button -->
+                        <div class="col-md-12 pt-3">
+
+                            <button
+                                type="submit"
+                                class="btn btn-primary px-5 py-3 rounded-3 fw-bold shadow-sm">
+
+                                <i class="fa-solid fa-save me-2"></i>
+                                Update Job Vacancy
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </form>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php require APP_ROOT . '/views/layouts/footer.php'; ?>

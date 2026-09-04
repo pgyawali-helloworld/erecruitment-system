@@ -22,12 +22,6 @@ $activeTab = isset($activeTab) ? $activeTab : 'dashboard';
         <a class="nav-link <?php echo $activeTab === 'candidates' ? 'active text-white' : 'text-secondary'; ?> py-2.5 rounded-3 fw-semibold" href="<?php echo URL_ROOT; ?>/admin/candidates">
             <i class="fa-solid fa-users me-2"></i>Manage Job Seekers
         </a>
-        <a class="nav-link <?php echo $activeTab === 'jobs' ? 'active text-white' : 'text-secondary'; ?> py-2.5 rounded-3 fw-semibold" href="<?php echo URL_ROOT; ?>/admin/jobs">
-            <i class="fa-solid fa-briefcase me-2"></i>Manage Jobs
-        </a>
-        <a class="nav-link <?php echo $activeTab === 'applications' ? 'active text-white' : 'text-secondary'; ?> py-2.5 rounded-3 fw-semibold" href="<?php echo URL_ROOT; ?>/admin/applications">
-            <i class="fa-solid fa-file-invoice me-2"></i>Manage Applications
-        </a>
         <a class="nav-link <?php echo $activeTab === 'reports' ? 'active text-white' : 'text-secondary'; ?> py-2.5 rounded-3 fw-semibold" href="<?php echo URL_ROOT; ?>/admin/reports">
             <i class="fa-solid fa-chart-line me-2"></i>Reports & Logs
         </a>

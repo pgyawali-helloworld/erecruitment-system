@@ -13,12 +13,27 @@ class Job {
     public function __construct() {
         $this->db = new Database();
     }
+/**
+ * Automatically deactivate expired job vacancies
+ */
+    public function deactivateExpiredJobs() {
+        $this->db->query("
+            UPDATE jobs
+            SET status = 'inactive'
+            WHERE expiry_date IS NOT NULL
+            AND expiry_date < CURDATE()
+            AND status = 'active'
+        ");
 
+        return $this->db->execute();
+    }
     /**
      * Get all active jobs with optional filtering
      * (keyword, category, job_type, location, status)
      */
     public function getAllJobs($filters = []) {
+         // Deactivate expired vacancies before fetching jobs
+         $this->deactivateExpiredJobs();
         $sql = "
             SELECT j.*,
                    c.company_name,
@@ -41,7 +56,10 @@ class Job {
             $sql .= " AND j.status = :status";
             $params[':status'] = $filters['status'];
         } else {
-            $sql .= " AND j.status = 'active'";
+             $sql .= "
+        AND j.status = 'active'
+        AND (j.expiry_date IS NULL OR j.expiry_date >= CURDATE())
+    ";
         }
 
         /*
@@ -131,6 +149,8 @@ class Job {
      * Get all jobs posted by an employer (company_id)
      */
     public function getJobsByCompanyId($companyId) {
+         // Deactivate expired vacancies
+            $this->deactivateExpiredJobs();
         $this->db->query("
             SELECT j.*,
                    cat.name AS category_name,

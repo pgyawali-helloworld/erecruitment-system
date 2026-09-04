@@ -67,13 +67,13 @@ class Admin {
      * Get Jobs count grouped by Category
      */
     public function getJobsByCategory() {
-        $this->db->query("
-            SELECT c.name AS category_name, c.icon, COUNT(j.id) AS job_count 
-            FROM categories c 
-            LEFT JOIN jobs j ON c.id = j.category_id 
-            GROUP BY c.id, c.name, c.icon 
-            ORDER BY job_count DESC
-        ");
+        $this->db->query(
+            "SELECT c.name AS name, c.icon AS icon, COUNT(j.id) AS job_count
+            FROM categories c
+            LEFT JOIN jobs j ON c.id = j.category_id
+            GROUP BY c.id, c.name, c.icon
+            ORDER BY job_count DESC"
+        );
         return $this->db->resultSet();
     }
 

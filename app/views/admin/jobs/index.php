@@ -33,7 +33,7 @@
                                 <th>Type</th>
                                 <th>Location</th>
                                 <th>Status</th>
-                                <th>Posted Date</th>
+                                <th>Expiry Date</th>
                                 <th class="text-end">Actions</th>
                             </tr>
                         </thead>
@@ -59,7 +59,7 @@
                                                 <?php echo ucfirst($job->status); ?>
                                             </span>
                                         </td>
-                                        <td><?php echo date('Y-m-d', strtotime($job->created_at)); ?></td>
+                                        <td><?php echo date('Y-m-d', strtotime($job->expiry_date)); ?></td>
                                         <td class="text-end">
                                             <a href="<?php echo URL_ROOT; ?>/admin/jobs/status/<?php echo $job->id; ?>" class="btn btn-sm <?php echo $job->status === 'active' ? 'btn-outline-warning' : 'btn-outline-success'; ?> me-1" title="Toggle Status">
                                                 <i class="fa-solid <?php echo $job->status === 'active' ? 'fa-pause' : 'fa-play'; ?>"></i>

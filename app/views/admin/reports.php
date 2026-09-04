@@ -66,37 +66,93 @@
             <!-- Jobs by Category -->
             <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
                 <h5 class="fw-bold mb-3 border-bottom pb-2">Jobs by Category</h5>
-                <?php if (empty($jobsByCategory)): ?>
-                    <p class="text-muted text-center py-4 my-0">No job categories defined.</p>
-                <?php else: ?>
-                    <div class="row g-4">
-                        <?php 
-                        $maxJobs = 0;
-                        foreach ($jobsByCategory as $c) {
-                            if ($c->job_count > $maxJobs) $maxJobs = $c->job_count;
-                        }
-                        // Avoid division by zero
-                        $maxJobs = $maxJobs ?: 1;
-                        ?>
-                        <?php foreach ($jobsByCategory as $c): ?>
-                            <?php 
-                            $percentage = round(($c->job_count / $maxJobs) * 100); 
-                            ?>
-                            <div class="col-md-6">
-                                <div class="d-flex align-items-center mb-1">
-                                    <span class="me-2 text-primary" style="width: 24px; text-align: center;">
-                                        <i class="fa-solid <?php echo htmlspecialchars($c->icon ?: 'fa-briefcase'); ?>"></i>
-                                    </span>
-                                    <span class="fw-semibold small flex-grow-1"><?php echo htmlspecialchars($c->name); ?></span>
-                                    <span class="badge bg-secondary-subtle text-secondary small"><?php echo $c->job_count; ?> jobs</span>
-                                </div>
-                                <div class="progress rounded-pill mb-3" style="height: 8px;">
-                                    <div class="progress-bar bg-success rounded-pill" role="progressbar" style="width: <?php echo $percentage; ?>%;" aria-valuenow="<?php echo $percentage; ?>" aria-valuemin="0" aria-valuemax="100"></div>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                <?php endif; ?>
+<?php
+// Add Chart.js CDN if not already loaded
+?>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<?php
+// Prepare data for Jobs by Category Pie Chart
+$jobCategories = $jobsByCategory;
+$jobLabels = [];
+$jobCounts = [];
+foreach ($jobCategories as $c) {
+    $jobLabels[] = $c->name;
+    $jobCounts[] = $c->job_count;
+}
+// Prepare data for System Activity Bar Chart
+$activityCounts = [
+    'user_registered' => 0,
+    'job_posted' => 0,
+    'application_submitted' => 0,
+];
+foreach ($recentActivities as $act) {
+    if (array_key_exists($act->event_type, $activityCounts)) {
+        $activityCounts[$act->event_type]++;
+    }
+}
+$activityLabels = ['User Registered', 'Job Posted', 'Application Submitted'];
+$activityData = [
+    $activityCounts['user_registered'],
+    $activityCounts['job_posted'],
+    $activityCounts['application_submitted'],
+];
+?>
+<!-- Charts Section -->
+<div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
+    <h5 class="fw-bold mb-3 border-bottom pb-2">Jobs by Category (Pie Chart)</h5>
+    <canvas id="jobsByCategoryChart" width="400" height="400"></canvas>
+</div>
+<div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
+    <h5 class="fw-bold mb-3 border-bottom pb-2">System Activity Overview (Bar Chart)</h5>
+    <canvas id="systemActivityChart" width="400" height="200"></canvas>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Jobs by Category Pie Chart
+    const ctxPie = document.getElementById('jobsByCategoryChart').getContext('2d');
+    const pieChart = new Chart(ctxPie, {
+        type: 'pie',
+        data: {
+            labels: <?php echo json_encode($jobLabels); ?>,
+            datasets: [{
+                data: <?php echo json_encode($jobCounts); ?>,
+                backgroundColor: [
+                    '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796', '#5a5c69', '#fd7e14'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {display: true, text: 'Jobs by Category'}
+            }
+        }
+    });
+
+    // System Activity Bar Chart
+    const ctxBar = document.getElementById('systemActivityChart').getContext('2d');
+    const barChart = new Chart(ctxBar, {
+        type: 'bar',
+        data: {
+            labels: <?php echo json_encode($activityLabels); ?>,
+            datasets: [{
+                label: 'Count',
+                data: <?php echo json_encode($activityData); ?>,
+                backgroundColor: '#4e73df'
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {beginAtZero: true, precision: 0}
+            },
+            plugins: {
+                title: {display: true, text: 'System Activity Overview'}
+            }
+        }
+    });
+});
+</script>
             </div>
 
             <!-- Detailed Activity Log -->

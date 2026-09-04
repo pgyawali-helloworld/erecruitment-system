@@ -46,7 +46,15 @@
             <strong>Experience:</strong>
             <?php echo htmlspecialchars($job->required_experience); ?>
         </span>
+        
     <?php endif; ?>
+    <?php if (!empty($job->expiry_date)): ?>
+    <span>
+        <i class="fa-solid fa-calendar-xmark text-danger me-1"></i>
+        <strong>Apply Before:</strong>
+        <?php echo htmlspecialchars(date('M d, Y', strtotime($job->expiry_date))); ?>
+    </span>
+<?php endif; ?>
     
 </div>
                     </div>

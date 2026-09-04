@@ -53,10 +53,11 @@
                                 <th>Job Title</th>
                                 <th>Category</th>
                                 <th>Type</th>
-                                <th>Location</th>
+                                <th>Expiry Date</th>
                                 <th>Applicants</th>
                                 <th>Status</th>
                                 <th class="text-end">Actions</th>
+                                 
                             </tr>
                         </thead>
                         <tbody class="small">
@@ -74,7 +75,14 @@
                                         </td>
                                         <td><?php echo htmlspecialchars($job->category_name ?: 'General'); ?></td>
                                         <td><span class="badge bg-info-subtle text-info px-2.5 py-1.5"><?php echo htmlspecialchars($job->job_type); ?></span></td>
-                                        <td><?php echo htmlspecialchars($job->location); ?></td>
+                                                                               <td>
+                                            <?php if (!empty($job->expiry_date)): ?>
+                                                <?php echo date('M d, Y', strtotime($job->expiry_date)); ?>
+                                            <?php else: ?>
+                                                <span class="text-muted">N/A</span>
+                                            <?php endif; ?>
+                                        </td>
+
                                         <td><span class="fw-bold text-primary"><?php echo $job->applications_count; ?> applied</span></td>
                                         <td>
                                             <span class="badge <?php echo $job->status === 'active' ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary'; ?> px-2.5 py-1.5">
@@ -83,7 +91,7 @@
                                         </td>
                                         <td class="text-end">
                                             <a href="<?php echo URL_ROOT; ?>/employer/jobs/edit/<?php echo $job->id; ?>" class="btn btn-sm btn-outline-primary me-1" title="Edit Vacancy">
-                                                <i class="fa-solid fa-pen"></i> Edit
+                                                <i class="fa-solid fa-pen"></i> 
                                             </a>
                                             <form action="<?php echo URL_ROOT; ?>/employer/jobs/delete/<?php echo $job->id; ?>" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this job vacancy?');">
                                                 <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Vacancy">

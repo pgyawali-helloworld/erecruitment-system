@@ -102,6 +102,47 @@ class User {
     }
 
     /**
+     * Get total count of users by role for pagination
+     */
+    public function getUserCountByRole($role) {
+        if ($role === 'employer') {
+            $this->db->query("SELECT COUNT(*) as cnt FROM users u WHERE u.role = 'employer'");
+        } else {
+            $this->db->query("SELECT COUNT(*) as cnt FROM users u WHERE u.role = 'candidate'");
+        }
+        $row = $this->db->single();
+        return $row->cnt ?? 0;
+    }
+
+    /**
+     * Get paginated users by role
+     */
+    public function getUsersByRolePaginated($role, $limit, $offset) {
+        if ($role === 'employer') {
+            $this->db->query("
+                SELECT u.id, u.name, u.email, u.status, u.created_at, c.company_name, c.industry, c.address 
+                FROM users u 
+                LEFT JOIN companies c ON u.id = c.user_id 
+                WHERE u.role = 'employer' 
+                ORDER BY u.created_at DESC 
+                LIMIT :limit OFFSET :offset
+            ");
+        } else {
+            $this->db->query("
+                SELECT u.id, u.name, u.email, u.status, u.created_at, cand.phone, cand.skills, cand.education 
+                FROM users u 
+                LEFT JOIN candidates cand ON u.id = cand.user_id 
+                WHERE u.role = 'candidate' 
+                ORDER BY u.created_at DESC 
+                LIMIT :limit OFFSET :offset
+            ");
+        }
+        $this->db->bind(':limit', $limit);
+        $this->db->bind(':offset', $offset);
+        return $this->db->resultSet();
+    }
+
+    /**
      * Get full details of a user by ID and Role
      */
     public function getUserDetails($userId, $role) {
