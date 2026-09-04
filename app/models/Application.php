@@ -50,24 +50,22 @@ class Application {
             )
         );
 
-        /*
-         * Normalize status.
-         */
-        $status = strtolower(trim((string) $status));
+       /*
+     * Automatically determine application status.
+     */
+    if ($matchPercentage >= 100) {
 
-        /*
-         * Only allow valid application statuses.
-         */
-        $allowedStatuses = [
-            'pending',
-            'under_review',
-            'shortlisted',
-            'rejected'
-        ];
+        $status = 'shortlisted';
 
-        if (!in_array($status, $allowedStatuses, true)) {
-            $status = 'pending';
-        }
+    } elseif ($matchPercentage < 50) {
+
+        $status = 'rejected';
+
+    } else {
+
+        $status = 'pending';
+    }
+
 
         /*
          * Insert application.

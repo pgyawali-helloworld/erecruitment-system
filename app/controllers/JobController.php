@@ -684,7 +684,7 @@ class JobController extends Controller {
                 $resumePath,
                 $coverLetter,
                 $matchPercentage,
-                $applicationStatus
+              
             )
         ) {
 
