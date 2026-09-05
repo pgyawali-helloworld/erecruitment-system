@@ -629,6 +629,107 @@ class EmployerController extends Controller {
             $data
         );
     }
+    /**
+ * Show Employer Profile
+ */
+public function profile() {
+
+    $employer = $this->getEmployerCompany();
+
+    if (!$employer) {
+        $this->redirect('employer/dashboard');
+        return;
+    }
+
+    $data = [
+        'title' => 'My Company Profile',
+        'employer' => $employer,
+        'activeTab' => 'profile'
+    ];
+
+    $this->view('employer/profile', $data);
+}
+
+
+/**
+ * Update Employer Profile
+ */
+public function updateProfile() {
+
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        $this->redirect('employer/profile');
+        return;
+    }
+
+    $employer = $this->getEmployerCompany();
+
+    if (!$employer) {
+        $this->redirect('employer/dashboard');
+        return;
+    }
+
+    $data = [
+        'company_name' => trim($_POST['company_name'] ?? ''),
+        'registration_no' => trim($_POST['registration_no'] ?? ''),
+        'website' => trim($_POST['website'] ?? ''),
+        'industry' => trim($_POST['industry'] ?? ''),
+        'company_size' => trim($_POST['company_size'] ?? ''),
+        'description' => trim($_POST['description'] ?? ''),
+        'address' => trim($_POST['address'] ?? '')
+    ];
+
+    $errors = [];
+
+    if ($data['company_name'] === '') {
+        $errors['company_name'] = 'Company name is required.';
+    }
+
+    if ($data['registration_no'] === '') {
+        $errors['registration_no'] =
+            'Company registration number is required.';
+    }
+
+    if (!empty($data['website']) &&
+        !filter_var($data['website'], FILTER_VALIDATE_URL)) {
+
+        $errors['website'] = 'Please enter a valid website URL.';
+    }
+
+    if (empty($errors)) {
+
+        if ($this->userModel->updateEmployerProfile(
+            $employer->company_id,
+            $data
+        )) {
+
+            Session::setFlash(
+                'success',
+                'Company profile updated successfully!',
+                'alert-success'
+            );
+
+        } else {
+
+            Session::setFlash(
+                'error',
+                'Failed to update company profile.'
+            );
+        }
+
+        $this->redirect('employer/profile');
+        return;
+    }
+
+    $data['title'] = 'My Company Profile';
+    $data['employer'] = (object)array_merge(
+        (array)$employer,
+        $data
+    );
+    $data['errors'] = $errors;
+    $data['activeTab'] = 'profile';
+
+    $this->view('employer/profile', $data);
+}
 
     /**
      * Update Candidate Application Status
